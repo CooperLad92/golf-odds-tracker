@@ -1,0 +1,7 @@
+<Error>
+<Code>NoSuchBucket</Code>
+<Message>The specified bucket does not exist</Message>
+<BucketName>golf-odds-files</BucketName>
+<RequestId>VJNMK4ABMXQE1M0R</RequestId>
+<HostId>okxujKQJWLf+ywqudwsMZSwZhtgOWbB9CMUuC6uyMvX3JXIuTHMSkrFOS2HEKfKyZvid5ezUQia4GcoqGVkhbxfx4tR+f3u7</HostId>
+</Error>
