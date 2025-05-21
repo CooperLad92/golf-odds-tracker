@@ -17,53 +17,31 @@
       text-align: center;
       color: #004d4d;
     }
+    input, button {
+      font-size: 16px;
+    }
     input {
-      padding: 10px;
+      padding: 8px;
       margin: 5px;
       border: 1px solid #ccc;
-      border-radius: 8px;
+      border-radius: 6px;
     }
     button {
-      padding: 10px 15px;
+      padding: 8px 12px;
       margin: 5px;
       border: none;
-      border-radius: 8px;
-      background-color: #007bff;
-      color: white;
+      border-radius: 6px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .player {
+    .player-card {
       background: white;
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 15px;
-      margin: 15px 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .hole-scores {
-      margin-top: 10px;
-      display: none;
+      margin-top: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .toggle-btn {
       background-color: #ffc107;
-      color: #333;
-    }
-    .toggle-btn:hover {
-      background-color: #e0a800;
-    }
-    .score-line {
-      display: flex;
-      align-items: center;
-      margin: 5px 0;
-    }
-    .score-line label {
-      width: 80px;
-    }
-    .score-line input {
-      width: 60px;
-      text-align: center;
     }
     .plus-btn {
       background-color: #28a745;
@@ -73,25 +51,39 @@
       background-color: #dc3545;
       color: white;
     }
+    .score-input {
+      width: 50px;
+      text-align: center;
+    }
+    .hole-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .hole-row label {
+      width: 60px;
+    }
     #rankings {
       display: none;
-      background: white;
+      background: #fff;
+      border-radius: 10px;
       padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
   <h1>Copa Libertadypee</h1>
+
   <div style="text-align: center;">
     <input id="name" placeholder="Friend's name" />
     <button onclick="addPlayer()">Add</button>
     <br />
     <button onclick="toggleRankings()">Show/Hide Rankings</button>
-    <div id="rankings"></div>
   </div>
+
+  <div id="rankings"></div>
   <div id="players"></div>
 
   <script>
@@ -107,106 +99,89 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const signState = {};
     let allPlayers = {};
 
     function addPlayer() {
-      const name = document.getElementById('name').value.trim();
+      const name = document.getElementById("name").value;
       if (!name) return;
-      const scores = Array(18).fill(0);
-      db.ref('players').push({ name, scores });
-      document.getElementById('name').value = '';
+      db.ref("players").push({ name, scores: Array(18).fill(0) });
+      document.getElementById("name").value = "";
+    }
+
+    function updateScore(playerId, holeIndex, value) {
+      const player = allPlayers[playerId];
+      if (!player.scores) player.scores = Array(18).fill(0);
+      const newScore = (parseInt(value) || 0);
+      player.scores[holeIndex] = newScore;
+      db.ref("players/" + playerId + "/scores").set(player.scores);
+    }
+
+    function adjustScore(playerId, holeIndex, sign) {
+      const input = document.getElementById(`${playerId}-hole-${holeIndex}`);
+      const raw = parseInt(input.value) || 0;
+      const score = sign === '+' ? raw : -raw;
+      const player = allPlayers[playerId];
+      if (!player.scores) player.scores = Array(18).fill(0);
+      player.scores[holeIndex] = score;
+      db.ref("players/" + playerId + "/scores").set(player.scores);
+      input.value = "";
     }
 
     function toggleHoles(id) {
-      const section = document.getElementById(`holes-${id}`);
-      if (section) {
-        section.style.display = section.style.display === 'block' ? 'none' : 'block';
-      }
+      const div = document.getElementById("holes-" + id);
+      div.style.display = div.style.display === "none" ? "block" : "none";
     }
 
     function toggleRankings() {
-      const div = document.getElementById('rankings');
-      if (div.style.display === 'block') {
-        div.style.display = 'none';
+      const div = document.getElementById("rankings");
+      if (div.style.display === "block") {
+        div.style.display = "none";
       } else {
-        const sorted = Object.entries(allPlayers).map(([id, data]) => {
-          const total = data.scores.reduce((a, b) => a + (parseInt(b) || 0), 0);
-          return { name: data.name, total };
+        const sorted = Object.entries(allPlayers).map(([id, p]) => {
+          const total = (p.scores || []).reduce((sum, n) => sum + (parseInt(n) || 0), 0);
+          return { name: p.name, total };
         }).sort((a, b) => a.total - b.total);
         div.innerHTML = sorted.map(p => `<div>${p.name}: ${p.total}</div>`).join('');
-        div.style.display = 'block';
+        div.style.display = "block";
       }
     }
 
-    function applySign(id, holeIndex, sign) {
-      const key = `${id}-${holeIndex}`;
-      signState[key] = sign;
-      const input = document.getElementById(`input-${key}`);
-      const raw = input.value.trim().replace('+', '').replace('-', '');
-      if (!raw) return input.focus();
-      const num = parseInt(raw);
-      if (!isNaN(num)) {
-        const final = sign === '-' ? -Math.abs(num) : Math.abs(num);
-        db.ref(`players/${id}/scores/${holeIndex}`).set(final);
-        input.value = final;
-      }
-      input.focus();
-    }
+    const playersDiv = document.getElementById("players");
 
-    function updateScore(playerId, holeIndex, input) {
-      const key = `${playerId}-${holeIndex}`;
-      const raw = input.value.trim().replace('+', '').replace('-', '');
-      if (raw === '') {
-        db.ref(`players/${playerId}/scores/${holeIndex}`).set(0);
-        return;
-      }
-      const num = parseInt(raw);
-      if (isNaN(num)) return;
-      const sign = signState[key] || '+';
-      const final = sign === '-' ? -Math.abs(num) : Math.abs(num);
-      db.ref(`players/${playerId}/scores/${holeIndex}`).set(final);
-      input.value = final;
-    }
-
-    function renderPlayers(snapshot) {
-      const playersDiv = document.getElementById('players');
-      playersDiv.innerHTML = '';
-      const players = snapshot.val();
-      allPlayers = players;
-      for (let id in players) {
-        const { name, scores = [] } = players[id];
+    db.ref("players").on("value", snapshot => {
+      playersDiv.innerHTML = "";
+      const data = snapshot.val() || {};
+      allPlayers = data;
+      for (const id in data) {
+        const { name, scores = [] } = data[id];
         const total = scores.reduce((sum, n) => sum + (parseInt(n) || 0), 0);
 
-        const div = document.createElement('div');
-        div.className = 'player';
-        div.innerHTML = `
-          <h3>${name} — Total: ${total}</h3>
-          <button class="toggle-btn" onclick="toggleHoles('${id}')">Show/Hide Holes</button>
-          <div id="holes-${id}" class="hole-scores"></div>
-        `;
+        const card = document.createElement("div");
+        card.className = "player-card";
 
-        const holeDiv = div.querySelector(`#holes-${id}`);
+        card.innerHTML = `<strong>${name} — Total: ${total}</strong><br>
+          <button class="toggle-btn" onclick="toggleHoles('${id}')">Show/Hide Holes</button>
+          <div id="holes-${id}" style="display: none; margin-top: 10px;"></div>`;
+
+        const holesDiv = card.querySelector(`#holes-${id}`);
         for (let i = 0; i < 18; i++) {
-          const value = scores[i];
-          const key = `${id}-${i}`;
-          const line = document.createElement('div');
-          line.className = 'score-line';
-          line.innerHTML = `
-            <label>Hole ${i + 1}:</label>
-            <button class="plus-btn" onclick="applySign('${id}', ${i}, '+')">+</button>
-            <button class="minus-btn" onclick="applySign('${id}', ${i}, '-')">−</button>
-            <input id="input-${key}" type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${value !== 0 ? value : ''}" 
-              onchange="updateScore('${id}', ${i}, this)" />
+          const holeRow = document.createElement("div");
+          holeRow.className = "hole-row";
+          holeRow.innerHTML = `
+            <label>Hole ${i+1}:</label>
+            <button class="plus-btn" onclick="adjustScore('${id}', ${i}, '+')">+</button>
+            <button class="minus-btn" onclick="adjustScore('${id}', ${i}, '-')">-</button>
+            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" onblur="updateScore('${id}', ${i}, this.value)" />
           `;
-          holeDiv.appendChild(line);
+          const input = holeRow.querySelector("input");
+          const val = typeof scores[i] === 'number' ? scores[i] : '';
+          input.value = val !== 0 ? val : "";
+          holesDiv.appendChild(holeRow);
         }
 
-        playersDiv.appendChild(div);
+        playersDiv.appendChild(card);
       }
-    }
-
-    db.ref('players').on('value', renderPlayers);
+    });
   </script>
 </body>
 </html>
