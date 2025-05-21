@@ -10,27 +10,18 @@
       font-family: 'Segoe UI', sans-serif;
       background: #e0f7f5;
       padding: 30px;
-      max-width: 500px;
+      max-width: 600px;
       margin: auto;
     }
     h1 {
       text-align: center;
       color: #004d4d;
     }
-    input[type="text"], input[type="number"] {
+    input {
       padding: 10px;
       margin: 5px;
       border: 1px solid #ccc;
       border-radius: 8px;
-      width: 100%;
-    }
-    input[type="number"] {
-      -moz-appearance: textfield;
-    }
-    input[type="number"]::-webkit-outer-spin-button,
-    input[type="number"]::-webkit-inner-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
     }
     button {
       padding: 10px 15px;
@@ -47,27 +38,20 @@
     .player {
       background: white;
       border-radius: 8px;
-      padding: 10px 15px;
-      margin: 10px 0;
+      padding: 15px;
+      margin: 15px 0;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .edit-btn {
+    .hole-scores {
+      display: none;
+      margin-top: 10px;
+    }
+    .toggle-btn {
       background-color: #ffc107;
       color: #333;
     }
-    .delete-btn {
-      background-color: #dc3545;
-      color: white;
-    }
-    .hole-input {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 3px 0;
-    }
-    .holes-container {
-      display: none;
-      margin-top: 10px;
+    .toggle-btn:hover {
+      background-color: #e0a800;
     }
   </style>
 </head>
@@ -75,7 +59,7 @@
   <h1>Copa Libertadypee</h1>
   <div style="text-align: center;">
     <input id="name" placeholder="Friend's name" />
-    <button onclick="addFriend()">Add</button>
+    <button onclick="addPlayer()">Add</button>
   </div>
   <div id="players"></div>
 
@@ -92,86 +76,57 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function addFriend() {
-      const name = document.getElementById('name').value;
+    function addPlayer() {
+      const name = document.getElementById('name').value.trim();
       if (!name) return;
-      const ref = db.ref('players').push();
       const scores = Array(18).fill(0);
-      ref.set({ name, scores });
+      db.ref('players').push({ name, scores });
       document.getElementById('name').value = '';
     }
 
-    function updateScores(id) {
-      const scores = [];
-      for (let i = 0; i < 18; i++) {
-        const val = parseInt(document.getElementById(`hole-${id}-${i}`).value);
-        scores.push(isNaN(val) ? 0 : val);
-      }
-      db.ref('players/' + id + '/scores').set(scores);
-    }
-
-    function deletePlayer(id) {
-      if (confirm("Delete this player?")) {
-        db.ref('players/' + id).remove();
-      }
-    }
-
     function toggleHoles(id) {
-      const holeDiv = document.getElementById(`holes-${id}`);
-      holeDiv.style.display = holeDiv.style.display === 'none' ? 'block' : 'none';
+      const section = document.getElementById(`holes-${id}`);
+      section.style.display = section.style.display === 'none' ? 'block' : 'none';
     }
 
-    const playersDiv = document.getElementById('players');
-    db.ref('players').on('value', snapshot => {
+    function updateScore(playerId, holeIndex, input) {
+      const val = parseInt(input.value);
+      const value = isNaN(val) ? 0 : val;
+      db.ref(`players/${playerId}/scores/${holeIndex}`).set(value);
+    }
+
+    function renderPlayers(snapshot) {
+      const playersDiv = document.getElementById('players');
       playersDiv.innerHTML = '';
       const players = snapshot.val();
       for (let id in players) {
-        const { name, scores = Array(18).fill(0) } = players[id];
-        const total = scores.reduce((a, b) => a + b, 0);
+        const { name, scores = [] } = players[id];
+        const total = scores.reduce((sum, n) => sum + (parseInt(n) || 0), 0);
 
         const div = document.createElement('div');
         div.className = 'player';
+        div.innerHTML = `
+          <h3>${name} — Total: ${total}</h3>
+          <button class="toggle-btn" onclick="toggleHoles('${id}')">Show/Hide Holes</button>
+          <div id="holes-${id}" class="hole-scores"></div>
+        `;
 
-        const nameHeader = document.createElement('h3');
-        nameHeader.textContent = `${name} — Total: ${total}`;
-        div.appendChild(nameHeader);
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.innerText = 'Show/Hide Holes';
-        toggleBtn.className = 'edit-btn';
-        toggleBtn.onclick = () => toggleHoles(id);
-        div.appendChild(toggleBtn);
-
-        const holesContainer = document.createElement('div');
-        holesContainer.id = `holes-${id}`;
-        holesContainer.className = 'holes-container';
-
-        scores.forEach((score, i) => {
-          const holeDiv = document.createElement('div');
-          holeDiv.className = 'hole-input';
-          holeDiv.innerHTML = `
-            <label>Hole ${i + 1}:</label>
-            <input type="number" id="hole-${id}-${i}" value="${score}" step="1" inputmode="numeric" />
+        const holeDiv = div.querySelector(`#holes-${id}`);
+        scores.forEach((val, i) => {
+          const hole = document.createElement('div');
+          hole.innerHTML = `
+            <label>Hole ${i + 1}: </label>
+            <input type="text" inputmode="numeric" pattern="[-+]?[0-9]*" value="${val}" 
+              onchange="updateScore('${id}', ${i}, this)" />
           `;
-          holesContainer.appendChild(holeDiv);
+          holeDiv.appendChild(hole);
         });
 
-        const saveBtn = document.createElement('button');
-        saveBtn.innerText = 'Save Scores';
-        saveBtn.className = 'edit-btn';
-        saveBtn.onclick = () => updateScores(id);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.innerText = 'Delete';
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => deletePlayer(id);
-
-        holesContainer.appendChild(saveBtn);
-        holesContainer.appendChild(deleteBtn);
-        div.appendChild(holesContainer);
         playersDiv.appendChild(div);
       }
-    });
+    }
+
+    db.ref('players').on('value', renderPlayers);
   </script>
 </body>
 </html>
