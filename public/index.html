@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #e0f7f5; /* soft teal */
+      background: #e0f7f5;
       padding: 30px;
       max-width: 500px;
       margin: auto;
@@ -85,8 +86,27 @@
       messagingSenderId: "1096956604397",
       appId: "1:1096956604397:web:05d38d391721c0af75c1e4"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const messaging = firebase.messaging();
+
+    messaging.getToken({
+      vapidKey: "BJEzcp3Q7ccFX8OijiRKDWkowTkdX0F4LPt_lohlDtxA--WavztpENy-oq6i3Jq4wU16BjmBlJwU8RDPk3iW-yc"
+    }).then((currentToken) => {
+      if (currentToken) {
+        console.log("Push Token:", currentToken);
+      } else {
+        console.warn("No registration token available.");
+      }
+    }).catch((err) => {
+      console.error("Error getting token:", err);
+    });
+
+    messaging.onMessage((payload) => {
+      console.log("Message received:", payload);
+      alert(`New update: ${payload.notification.title}`);
+    });
 
     let editingId = null;
 
