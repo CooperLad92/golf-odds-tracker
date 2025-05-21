@@ -1,137 +1,157 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="UTF-8">
   <title>Copa Libertadypee</title>
-  <link rel="manifest" href="manifest.json">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #e6f7f6;
-      padding: 20px;
+      background-color: #e0f7f7;
       text-align: center;
+      padding: 20px;
     }
     h1 {
-      color: #005f5f;
+      color: #005555;
     }
     input {
+      margin: 5px;
       padding: 10px;
-      margin: 10px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      width: 80%;
-      max-width: 300px;
+      font-size: 16px;
     }
     button {
       padding: 10px 15px;
+      margin: 5px;
+      font-size: 14px;
       border: none;
       border-radius: 5px;
-      margin: 5px;
-      cursor: pointer;
     }
-    .add-btn {
+    .edit {
+      background-color: #ffc107;
+      color: #000;
+    }
+    .delete {
+      background-color: #dc3545;
+      color: #fff;
+    }
+    .send {
       background-color: #007bff;
       color: white;
+      margin-top: 20px;
     }
-    .edit-btn {
-      background-color: #ffc107;
-    }
-    .delete-btn {
-      background-color: #dc3545;
-      color: white;
-    }
-    .notify-btn {
-      background-color: #0056b3;
-      color: white;
-      margin-top: 30px;
-      width: 90%;
-      max-width: 320px;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    li {
-      margin: 10px 0;
-      padding: 15px;
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    .entry {
+      background-color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px auto;
+      max-width: 400px;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
     }
   </style>
 </head>
 <body>
   <h1>Copa Libertadypee</h1>
-  <input id="name" placeholder="Friend's name">
-  <input id="odds" placeholder="Odds (e.g. 4.5)">
-  <br>
-  <button onclick="addEntry()" class="add-btn">Add</button>
-  <ul id="list"></ul>
-  <button class="notify-btn" onclick="sendNotification()">Send Notification</button>  <script>
-    let editingIndex = null;
+  <input type="text" id="nameInput" placeholder="Friend's name" />
+  <input type="number" id="oddsInput" placeholder="Odds (e.g. 4.5)" step="any" />
+  <button onclick="addEntry()">Add</button>
+  <div id="entries"></div>
+  <button class="send" onclick="sendNotification()">Send Notification</button>
 
-    function loadEntries() {
-      const entries = JSON.parse(localStorage.getItem("entries")) || [];
-      const list = document.getElementById("list");
-      list.innerHTML = "";
-      entries.forEach((entry, i) => {
-        const li = document.createElement("li");
-        li.textContent = `${entry.name} - Odds: ${entry.odds}`;
-        const editBtn = document.createElement("button");
-        editBtn.textContent = "Edit";
-        editBtn.className = "edit-btn";
-        editBtn.onclick = () => editEntry(i);
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "Delete";
-        deleteBtn.className = "delete-btn";
-        deleteBtn.onclick = () => deleteEntry(i);
-        li.appendChild(editBtn);
-        li.appendChild(deleteBtn);
-        list.appendChild(li);
-      });
-    }
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAxQ1b5vPTzvYk0jMTZ9_UC8Sm3DW1p_EA",
+      authDomain: "copa-libertadypee.firebaseapp.com",
+      databaseURL: "https://copa-libertadypee-default-rtdb.firebaseio.com",
+      projectId: "copa-libertadypee",
+      storageBucket: "copa-libertadypee.appspot.com",
+      messagingSenderId: "1096956604397",
+      appId: "1:1096956604397:web:bcf16a8d0d409f5d0deea3"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const messaging = firebase.messaging();
+
+    let editingKey = null;
 
     function addEntry() {
-      const name = document.getElementById("name").value;
-      const odds = document.getElementById("odds").value;
-      const entries = JSON.parse(localStorage.getItem("entries")) || [];
+      const name = document.getElementById('nameInput').value;
+      const odds = document.getElementById('oddsInput').value;
+      if (!name || !odds) return alert("Enter both name and odds");
 
-      if (editingIndex !== null) {
-        entries[editingIndex] = { name, odds };
-        editingIndex = null;
+      const entry = { name, odds };
+
+      if (editingKey) {
+        db.ref('entries/' + editingKey).set(entry);
+        editingKey = null;
       } else {
-        entries.push({ name, odds });
+        db.ref('entries').push(entry);
       }
 
-      localStorage.setItem("entries", JSON.stringify(entries));
-      document.getElementById("name").value = "";
-      document.getElementById("odds").value = "";
-      loadEntries();
+      document.getElementById('nameInput').value = '';
+      document.getElementById('oddsInput').value = '';
     }
 
-    function editEntry(index) {
-      const entries = JSON.parse(localStorage.getItem("entries"));
-      document.getElementById("name").value = entries[index].name;
-      document.getElementById("odds").value = entries[index].odds;
-      editingIndex = index;
+    function editEntry(key, entry) {
+      document.getElementById('nameInput').value = entry.name;
+      document.getElementById('oddsInput').value = entry.odds;
+      editingKey = key;
     }
 
-    function deleteEntry(index) {
-      const entries = JSON.parse(localStorage.getItem("entries"));
-      entries.splice(index, 1);
-      localStorage.setItem("entries", JSON.stringify(entries));
-      loadEntries();
+    function deleteEntry(key) {
+      db.ref('entries/' + key).remove();
     }
+
+    db.ref('entries').on('value', (snapshot) => {
+      const container = document.getElementById('entries');
+      container.innerHTML = '';
+      snapshot.forEach((child) => {
+        const key = child.key;
+        const { name, odds } = child.val();
+        const div = document.createElement('div');
+        div.className = "entry";
+        div.innerHTML = `
+          <strong>${name}</strong> — Odds: ${odds}
+          <br>
+          <button class="edit" onclick='editEntry("${key}", ${JSON.stringify({ name, odds })})'>Edit</button>
+          <button class="delete" onclick='deleteEntry("${key}")'>Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    });
+
+    // Subscribe to notifications
+    messaging.getToken({ vapidKey: "BJEzcp3Q7ccFX8OijiRKDWkowTkdX0F4LPt_lohlDtxA--WavztpENy-oq6i3Jq4wU16BjmBlJwU8RDPk3iW-yc" })
+      .then((token) => {
+        if (token) {
+          console.log("Token acquired:", token);
+          fetch(`https://iid.googleapis.com/iid/v1/${token}/rel/topics/oddsUpdates`, {
+            method: 'POST',
+            headers: {
+              Authorization: 'key=AAAAxOZeyOY:APA91bGVHZlxWqa8CJYI2gbyNjUOqFEQQKyD2C0RzVJc8XnYoWeD4FaIdc3mkdWxi5vWkVqJgCRSLepj3IpUu0oz8N_5uD_V8G6mv9_N7cXbUcu7JnxjFuBOmGrmfUpBtD0gCzzRJEtJ'
+            }
+          });
+        } else {
+          alert("No token received.");
+        }
+      });
+
+    messaging.onMessage((payload) => {
+      alert("New odds update received!");
+    });
 
     function sendNotification() {
-      fetch("https://your-cloud-function-url/send-notification", {
-        method: "POST"
-      }).then(() => {
-        alert("Notification triggered!");
-      }).catch(() => {
-        alert("Failed to send notification.");
+      fetch('https://copa-libertadypee.cloudfunctions.net/sendNotification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: "Odds Updated!",
+          body: "Someone changed the board"
+        })
       });
     }
-
-    loadEntries();
-  </script></body>
+  </script>
+</body>
 </html>
