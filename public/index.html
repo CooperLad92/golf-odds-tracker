@@ -100,6 +100,7 @@
     const db = firebase.database();
 
     let allPlayers = {};
+    let scoreModifiers = {};
 
     function addPlayer() {
       const name = document.getElementById("name").value;
@@ -109,22 +110,21 @@
     }
 
     function updateScore(playerId, holeIndex, value) {
-      const player = allPlayers[playerId];
-      if (!player.scores) player.scores = Array(18).fill(0);
-      const newScore = (parseInt(value) || 0);
-      player.scores[holeIndex] = newScore;
-      db.ref("players/" + playerId + "/scores").set(player.scores);
+      const modifier = scoreModifiers[playerId]?.[holeIndex] || 1;
+      const inputValue = parseInt(value);
+      const score = isNaN(inputValue) ? 0 : inputValue * modifier;
+
+      if (!allPlayers[playerId].scores) allPlayers[playerId].scores = Array(18).fill(0);
+      allPlayers[playerId].scores[holeIndex] = score;
+      db.ref("players/" + playerId + "/scores").set(allPlayers[playerId].scores);
+      scoreModifiers[playerId][holeIndex] = 1; // reset
     }
 
-    function adjustScore(playerId, holeIndex, sign) {
+    function setModifier(playerId, holeIndex, sign) {
+      if (!scoreModifiers[playerId]) scoreModifiers[playerId] = {};
+      scoreModifiers[playerId][holeIndex] = sign === '+' ? 1 : -1;
       const input = document.getElementById(`${playerId}-hole-${holeIndex}`);
-      const raw = parseInt(input.value) || 0;
-      const score = sign === '+' ? raw : -raw;
-      const player = allPlayers[playerId];
-      if (!player.scores) player.scores = Array(18).fill(0);
-      player.scores[holeIndex] = score;
-      db.ref("players/" + playerId + "/scores").set(player.scores);
-      input.value = "";
+      input.focus();
     }
 
     function toggleHoles(id) {
@@ -167,15 +167,13 @@
         for (let i = 0; i < 18; i++) {
           const holeRow = document.createElement("div");
           holeRow.className = "hole-row";
+          const val = typeof scores[i] === 'number' ? scores[i] : '';
           holeRow.innerHTML = `
             <label>Hole ${i+1}:</label>
-            <button class="plus-btn" onclick="adjustScore('${id}', ${i}, '+')">+</button>
-            <button class="minus-btn" onclick="adjustScore('${id}', ${i}, '-')">-</button>
-            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" onblur="updateScore('${id}', ${i}, this.value)" />
+            <button class="plus-btn" onclick="setModifier('${id}', ${i}, '+')">+</button>
+            <button class="minus-btn" onclick="setModifier('${id}', ${i}, '-')">-</button>
+            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" value="${val !== 0 ? val : ''}" onblur="updateScore('${id}', ${i}, this.value)" />
           `;
-          const input = holeRow.querySelector("input");
-          const val = typeof scores[i] === 'number' ? scores[i] : '';
-          input.value = val !== 0 ? val : "";
           holesDiv.appendChild(holeRow);
         }
 
