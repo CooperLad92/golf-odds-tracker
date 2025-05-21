@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Golf Odds Tracker</title>
+  <title>Copa Libertadypee</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f5f5f5;
+      background: #e0f7f5; /* soft teal */
       padding: 30px;
       max-width: 500px;
       margin: auto;
     }
     h1 {
       text-align: center;
-      color: #333;
+      color: #004d4d;
     }
     input {
       padding: 10px;
@@ -49,14 +49,23 @@
     .edit-btn {
       background-color: #ffc107;
       color: #333;
+      margin-left: 5px;
     }
     .edit-btn:hover {
       background-color: #e0a800;
     }
+    .delete-btn {
+      background-color: #dc3545;
+      color: white;
+      margin-left: 5px;
+    }
+    .delete-btn:hover {
+      background-color: #c82333;
+    }
   </style>
 </head>
 <body>
-  <h1>Golf Odds Tracker</h1>
+  <h1>Copa Libertadypee</h1>
   <div style="text-align: center;">
     <input id="name" placeholder="Friend's name" />
     <input id="odds" placeholder="Odds (e.g. 4.5)" type="number" />
@@ -111,6 +120,12 @@
       editingId = null;
     }
 
+    function deletePlayer(id) {
+      if (confirm("Delete this player?")) {
+        db.ref('players/' + id).remove();
+      }
+    }
+
     const playersDiv = document.getElementById('players');
     db.ref('players').on('value', snapshot => {
       playersDiv.innerHTML = '';
@@ -120,11 +135,19 @@
         const div = document.createElement('div');
         div.className = 'player';
         div.innerHTML = `<span>${name} — Odds: ${odds}</span>`;
+
         const editBtn = document.createElement('button');
         editBtn.innerText = 'Edit';
         editBtn.className = 'edit-btn';
         editBtn.onclick = () => startEdit(id, name, odds);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerText = 'Delete';
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => deletePlayer(id);
+
         div.appendChild(editBtn);
+        div.appendChild(deleteBtn);
         playersDiv.appendChild(div);
       }
     });
