@@ -92,8 +92,8 @@
     }
 
     function updateScore(playerId, holeIndex, input) {
-      const val = parseInt(input.value);
-      const value = isNaN(val) ? 0 : val;
+      const raw = input.value.trim();
+      const value = parseInt(raw.replace('+', '')) || 0;
       db.ref(`players/${playerId}/scores/${holeIndex}`).set(value);
     }
 
@@ -118,7 +118,7 @@
           const hole = document.createElement('div');
           hole.innerHTML = `
             <label>Hole ${i + 1}: </label>
-            <input type="text" inputmode="numeric" pattern="[-+]?[0-9]*" value="${scores[i] || 0}" 
+            <input type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${scores[i] || 0}" 
               onchange="updateScore('${id}', ${i}, this)" />
           `;
           holeDiv.appendChild(hole);
