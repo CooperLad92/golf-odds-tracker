@@ -8,13 +8,15 @@
     body { font-family: sans-serif; padding: 20px; }
     input, button { margin: 5px; padding: 5px; }
     .player { margin-bottom: 10px; }
+    .edit-btn { margin-left: 10px; }
   </style>
 </head>
 <body>
   <h1>Golf Odds Tracker</h1>
   <input id="name" placeholder="Friend's name" />
   <input id="odds" placeholder="Odds (e.g. 4.5)" type="number" />
-  <button onclick="addFriend()">Add</button>
+  <button id="addBtn" onclick="addFriend()">Add</button>
+  <button id="saveBtn" onclick="saveEdit()" style="display:none;">Save</button>
   <div id="players"></div>
 
   <script>
@@ -30,6 +32,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    let editingId = null;
+
     function addFriend() {
       const name = document.getElementById('name').value;
       const odds = document.getElementById('odds').value;
@@ -38,6 +42,26 @@
       ref.set({ name, odds });
       document.getElementById('name').value = '';
       document.getElementById('odds').value = '';
+    }
+
+    function startEdit(id, name, odds) {
+      document.getElementById('name').value = name;
+      document.getElementById('odds').value = odds;
+      document.getElementById('addBtn').style.display = 'none';
+      document.getElementById('saveBtn').style.display = 'inline-block';
+      editingId = id;
+    }
+
+    function saveEdit() {
+      const name = document.getElementById('name').value;
+      const odds = document.getElementById('odds').value;
+      if (!name || !odds || !editingId) return;
+      db.ref('players/' + editingId).set({ name, odds });
+      document.getElementById('name').value = '';
+      document.getElementById('odds').value = '';
+      document.getElementById('addBtn').style.display = 'inline-block';
+      document.getElementById('saveBtn').style.display = 'none';
+      editingId = null;
     }
 
     const playersDiv = document.getElementById('players');
@@ -49,6 +73,13 @@
         const div = document.createElement('div');
         div.className = 'player';
         div.innerText = name + ' — Odds: ' + odds;
+
+        const editBtn = document.createElement('button');
+        editBtn.innerText = 'Edit';
+        editBtn.className = 'edit-btn';
+        editBtn.onclick = () => startEdit(id, name, odds);
+
+        div.appendChild(editBtn);
         playersDiv.appendChild(div);
       }
     });
