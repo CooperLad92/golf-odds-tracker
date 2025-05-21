@@ -53,6 +53,26 @@
     .toggle-btn:hover {
       background-color: #e0a800;
     }
+    .score-line {
+      display: flex;
+      align-items: center;
+      margin: 5px 0;
+    }
+    .score-line label {
+      width: 80px;
+    }
+    .score-line input {
+      width: 60px;
+      text-align: center;
+    }
+    .plus-btn {
+      background-color: #28a745;
+      color: white;
+    }
+    .minus-btn {
+      background-color: #dc3545;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +96,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    const signState = {}; // Track the + or - setting per input
+
     function addPlayer() {
       const name = document.getElementById('name').value.trim();
       if (!name) return;
@@ -91,10 +113,22 @@
       }
     }
 
+    function applySign(id, holeIndex, sign) {
+      const key = `${id}-${holeIndex}`;
+      signState[key] = sign;
+      const input = document.getElementById(`input-${key}`);
+      input.focus();
+    }
+
     function updateScore(playerId, holeIndex, input) {
-      const raw = input.value.trim();
-      const value = parseInt(raw.replace('+', '')) || 0;
-      db.ref(`players/${playerId}/scores/${holeIndex}`).set(value);
+      const key = `${playerId}-${holeIndex}`;
+      const raw = input.value.trim().replace('+', '').replace('-', '');
+      const num = parseInt(raw);
+      if (isNaN(num)) return;
+      const sign = signState[key] || '+';
+      const final = sign === '-' ? -Math.abs(num) : Math.abs(num);
+      db.ref(`players/${playerId}/scores/${holeIndex}`).set(final);
+      input.value = final;
     }
 
     function renderPlayers(snapshot) {
@@ -115,13 +149,18 @@
 
         const holeDiv = div.querySelector(`#holes-${id}`);
         for (let i = 0; i < 18; i++) {
-          const hole = document.createElement('div');
-          hole.innerHTML = `
-            <label>Hole ${i + 1}: </label>
-            <input type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${scores[i] || 0}" 
+          const value = scores[i] || 0;
+          const key = `${id}-${i}`;
+          const line = document.createElement('div');
+          line.className = 'score-line';
+          line.innerHTML = `
+            <label>Hole ${i + 1}:</label>
+            <input id="input-${key}" type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${value}" 
               onchange="updateScore('${id}', ${i}, this)" />
+            <button class="plus-btn" onclick="applySign('${id}', ${i}, '+')">+</button>
+            <button class="minus-btn" onclick="applySign('${id}', ${i}, '-')">−</button>
           `;
-          holeDiv.appendChild(hole);
+          holeDiv.appendChild(line);
         }
 
         playersDiv.appendChild(div);
