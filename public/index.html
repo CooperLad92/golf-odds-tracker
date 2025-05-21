@@ -43,8 +43,8 @@
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .hole-scores {
-      display: none;
       margin-top: 10px;
+      display: none;
     }
     .toggle-btn {
       background-color: #ffc107;
@@ -86,7 +86,9 @@
 
     function toggleHoles(id) {
       const section = document.getElementById(`holes-${id}`);
-      section.style.display = section.style.display === 'none' ? 'block' : 'none';
+      if (section) {
+        section.style.display = section.style.display === 'block' ? 'none' : 'block';
+      }
     }
 
     function updateScore(playerId, holeIndex, input) {
@@ -112,15 +114,15 @@
         `;
 
         const holeDiv = div.querySelector(`#holes-${id}`);
-        scores.forEach((val, i) => {
+        for (let i = 0; i < 18; i++) {
           const hole = document.createElement('div');
           hole.innerHTML = `
             <label>Hole ${i + 1}: </label>
-            <input type="text" inputmode="numeric" pattern="[-+]?[0-9]*" value="${val}" 
+            <input type="text" inputmode="numeric" pattern="[-+]?[0-9]*" value="${scores[i] || 0}" 
               onchange="updateScore('${id}', ${i}, this)" />
           `;
           holeDiv.appendChild(hole);
-        });
+        }
 
         playersDiv.appendChild(div);
       }
