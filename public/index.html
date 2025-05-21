@@ -2,21 +2,68 @@
 <html>
 <head>
   <title>Golf Odds Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    input, button { margin: 5px; padding: 5px; }
-    .player { margin-bottom: 10px; }
-    .edit-btn { margin-left: 10px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      padding: 30px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    input {
+      padding: 10px;
+      width: calc(50% - 20px);
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .player {
+      background: white;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin: 10px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .edit-btn {
+      background-color: #ffc107;
+      color: #333;
+    }
+    .edit-btn:hover {
+      background-color: #e0a800;
+    }
   </style>
 </head>
 <body>
   <h1>Golf Odds Tracker</h1>
-  <input id="name" placeholder="Friend's name" />
-  <input id="odds" placeholder="Odds (e.g. 4.5)" type="number" />
-  <button id="addBtn" onclick="addFriend()">Add</button>
-  <button id="saveBtn" onclick="saveEdit()" style="display:none;">Save</button>
+  <div style="text-align: center;">
+    <input id="name" placeholder="Friend's name" />
+    <input id="odds" placeholder="Odds (e.g. 4.5)" type="number" />
+    <br />
+    <button id="addBtn" onclick="addFriend()">Add</button>
+    <button id="saveBtn" onclick="saveEdit()" style="display:none;">Save</button>
+  </div>
   <div id="players"></div>
 
   <script>
@@ -72,13 +119,11 @@
         const { name, odds } = players[id];
         const div = document.createElement('div');
         div.className = 'player';
-        div.innerText = name + ' — Odds: ' + odds;
-
+        div.innerHTML = `<span>${name} — Odds: ${odds}</span>`;
         const editBtn = document.createElement('button');
         editBtn.innerText = 'Edit';
         editBtn.className = 'edit-btn';
         editBtn.onclick = () => startEdit(id, name, odds);
-
         div.appendChild(editBtn);
         playersDiv.appendChild(div);
       }
