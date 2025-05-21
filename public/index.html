@@ -1,176 +1,137 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html><html>
 <head>
+  <meta charset="UTF-8">
   <title>Copa Libertadypee</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-messaging-compat.js"></script>
+  <link rel="manifest" href="manifest.json">
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #e0f7f5;
-      padding: 30px;
-      max-width: 500px;
-      margin: auto;
+      font-family: Arial, sans-serif;
+      background-color: #e6f7f6;
+      padding: 20px;
+      text-align: center;
     }
     h1 {
-      text-align: center;
-      color: #004d4d;
+      color: #005f5f;
     }
     input {
       padding: 10px;
-      width: calc(50% - 20px);
-      margin: 5px;
+      margin: 10px;
+      border-radius: 5px;
       border: 1px solid #ccc;
-      border-radius: 8px;
+      width: 80%;
+      max-width: 300px;
     }
     button {
       padding: 10px 15px;
-      margin: 5px;
       border: none;
-      border-radius: 8px;
-      background-color: #007bff;
-      color: white;
+      border-radius: 5px;
+      margin: 5px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .player {
-      background: white;
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin: 10px 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .add-btn {
+      background-color: #007bff;
+      color: white;
     }
     .edit-btn {
       background-color: #ffc107;
-      color: #333;
-      margin-left: 5px;
-    }
-    .edit-btn:hover {
-      background-color: #e0a800;
     }
     .delete-btn {
       background-color: #dc3545;
       color: white;
-      margin-left: 5px;
     }
-    .delete-btn:hover {
-      background-color: #c82333;
+    .notify-btn {
+      background-color: #0056b3;
+      color: white;
+      margin-top: 30px;
+      width: 90%;
+      max-width: 320px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      margin: 10px 0;
+      padding: 15px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
   <h1>Copa Libertadypee</h1>
-  <div style="text-align: center;">
-    <input id="name" placeholder="Friend's name" />
-    <input id="odds" placeholder="Odds (e.g. 4.5)" type="number" />
-    <br />
-    <button id="addBtn" onclick="addFriend()">Add</button>
-    <button id="saveBtn" onclick="saveEdit()" style="display:none;">Save</button>
-  </div>
-  <div id="players"></div>
+  <input id="name" placeholder="Friend's name">
+  <input id="odds" placeholder="Odds (e.g. 4.5)">
+  <br>
+  <button onclick="addEntry()" class="add-btn">Add</button>
+  <ul id="list"></ul>
+  <button class="notify-btn" onclick="sendNotification()">Send Notification</button>  <script>
+    let editingIndex = null;
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBnEXGUIWndeYbT7Y92BnGsmK84zMFImjA",
-      authDomain: "copa-libertadypee.firebaseapp.com",
-      databaseURL: "https://copa-libertadypee-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "copa-libertadypee",
-      storageBucket: "copa-libertadypee.appspot.com",
-      messagingSenderId: "1096956604397",
-      appId: "1:1096956604397:web:05d38d391721c0af75c1e4"
-    };
+    function loadEntries() {
+      const entries = JSON.parse(localStorage.getItem("entries")) || [];
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      entries.forEach((entry, i) => {
+        const li = document.createElement("li");
+        li.textContent = `${entry.name} - Odds: ${entry.odds}`;
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "Edit";
+        editBtn.className = "edit-btn";
+        editBtn.onclick = () => editEntry(i);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete";
+        deleteBtn.className = "delete-btn";
+        deleteBtn.onclick = () => deleteEntry(i);
+        li.appendChild(editBtn);
+        li.appendChild(deleteBtn);
+        list.appendChild(li);
+      });
+    }
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const messaging = firebase.messaging();
+    function addEntry() {
+      const name = document.getElementById("name").value;
+      const odds = document.getElementById("odds").value;
+      const entries = JSON.parse(localStorage.getItem("entries")) || [];
 
-    messaging.getToken({
-      vapidKey: "BJEzcp3Q7ccFX8OijiRKDWkowTkdX0F4LPt_lohlDtxA--WavztpENy-oq6i3Jq4wU16BjmBlJwU8RDPk3iW-yc"
-    }).then((currentToken) => {
-      if (currentToken) {
-        console.log("Push Token:", currentToken);
+      if (editingIndex !== null) {
+        entries[editingIndex] = { name, odds };
+        editingIndex = null;
       } else {
-        console.warn("No registration token available.");
+        entries.push({ name, odds });
       }
-    }).catch((err) => {
-      console.error("Error getting token:", err);
-    });
 
-    messaging.onMessage((payload) => {
-      console.log("Message received:", payload);
-      alert(`New update: ${payload.notification.title}`);
-    });
-
-    let editingId = null;
-
-    function addFriend() {
-      const name = document.getElementById('name').value;
-      const odds = document.getElementById('odds').value;
-      if (!name || !odds) return;
-      const ref = db.ref('players').push();
-      ref.set({ name, odds });
-      document.getElementById('name').value = '';
-      document.getElementById('odds').value = '';
+      localStorage.setItem("entries", JSON.stringify(entries));
+      document.getElementById("name").value = "";
+      document.getElementById("odds").value = "";
+      loadEntries();
     }
 
-    function startEdit(id, name, odds) {
-      document.getElementById('name').value = name;
-      document.getElementById('odds').value = odds;
-      document.getElementById('addBtn').style.display = 'none';
-      document.getElementById('saveBtn').style.display = 'inline-block';
-      editingId = id;
+    function editEntry(index) {
+      const entries = JSON.parse(localStorage.getItem("entries"));
+      document.getElementById("name").value = entries[index].name;
+      document.getElementById("odds").value = entries[index].odds;
+      editingIndex = index;
     }
 
-    function saveEdit() {
-      const name = document.getElementById('name').value;
-      const odds = document.getElementById('odds').value;
-      if (!name || !odds || !editingId) return;
-      db.ref('players/' + editingId).set({ name, odds });
-      document.getElementById('name').value = '';
-      document.getElementById('odds').value = '';
-      document.getElementById('addBtn').style.display = 'inline-block';
-      document.getElementById('saveBtn').style.display = 'none';
-      editingId = null;
+    function deleteEntry(index) {
+      const entries = JSON.parse(localStorage.getItem("entries"));
+      entries.splice(index, 1);
+      localStorage.setItem("entries", JSON.stringify(entries));
+      loadEntries();
     }
 
-    function deletePlayer(id) {
-      if (confirm("Delete this player?")) {
-        db.ref('players/' + id).remove();
-      }
+    function sendNotification() {
+      fetch("https://your-cloud-function-url/send-notification", {
+        method: "POST"
+      }).then(() => {
+        alert("Notification triggered!");
+      }).catch(() => {
+        alert("Failed to send notification.");
+      });
     }
 
-    const playersDiv = document.getElementById('players');
-    db.ref('players').on('value', snapshot => {
-      playersDiv.innerHTML = '';
-      const players = snapshot.val();
-      for (let id in players) {
-        const { name, odds } = players[id];
-        const div = document.createElement('div');
-        div.className = 'player';
-        div.innerHTML = `<span>${name} — Odds: ${odds}</span>`;
-
-        const editBtn = document.createElement('button');
-        editBtn.innerText = 'Edit';
-        editBtn.className = 'edit-btn';
-        editBtn.onclick = () => startEdit(id, name, odds);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.innerText = 'Delete';
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => deletePlayer(id);
-
-        div.appendChild(editBtn);
-        div.appendChild(deleteBtn);
-        playersDiv.appendChild(div);
-      }
-    });
-  </script>
-</body>
+    loadEntries();
+  </script></body>
 </html>
