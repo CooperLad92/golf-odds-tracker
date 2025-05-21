@@ -96,7 +96,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const signState = {}; // Track the + or - setting per input
+    const signState = {}; // Track + or − mode per input
 
     function addPlayer() {
       const name = document.getElementById('name').value.trim();
@@ -117,6 +117,14 @@
       const key = `${id}-${holeIndex}`;
       signState[key] = sign;
       const input = document.getElementById(`input-${key}`);
+      const raw = input.value.trim().replace('+', '').replace('-', '');
+      if (!raw) return input.focus();
+      const num = parseInt(raw);
+      if (!isNaN(num)) {
+        const final = sign === '-' ? -Math.abs(num) : Math.abs(num);
+        db.ref(`players/${id}/scores/${holeIndex}`).set(final);
+        input.value = final;
+      }
       input.focus();
     }
 
@@ -155,10 +163,10 @@
           line.className = 'score-line';
           line.innerHTML = `
             <label>Hole ${i + 1}:</label>
-            <input id="input-${key}" type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${value}" 
-              onchange="updateScore('${id}', ${i}, this)" />
             <button class="plus-btn" onclick="applySign('${id}', ${i}, '+')">+</button>
             <button class="minus-btn" onclick="applySign('${id}', ${i}, '-')">−</button>
+            <input id="input-${key}" type="text" inputmode="text" pattern="[-+]?[0-9]*" value="${value}" 
+              onchange="updateScore('${id}', ${i}, this)" />
           `;
           holeDiv.appendChild(line);
         }
