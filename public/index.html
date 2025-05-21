@@ -24,6 +24,14 @@
       border-radius: 8px;
       width: 100%;
     }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
     button {
       padding: 10px 15px;
       margin: 5px;
@@ -56,6 +64,10 @@
       justify-content: space-between;
       align-items: center;
       margin: 3px 0;
+    }
+    .holes-container {
+      display: none;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -104,6 +116,11 @@
       }
     }
 
+    function toggleHoles(id) {
+      const holeDiv = document.getElementById(`holes-${id}`);
+      holeDiv.style.display = holeDiv.style.display === 'none' ? 'block' : 'none';
+    }
+
     const playersDiv = document.getElementById('players');
     db.ref('players').on('value', snapshot => {
       playersDiv.innerHTML = '';
@@ -119,14 +136,24 @@
         nameHeader.textContent = `${name} — Total: ${total}`;
         div.appendChild(nameHeader);
 
+        const toggleBtn = document.createElement('button');
+        toggleBtn.innerText = 'Show/Hide Holes';
+        toggleBtn.className = 'edit-btn';
+        toggleBtn.onclick = () => toggleHoles(id);
+        div.appendChild(toggleBtn);
+
+        const holesContainer = document.createElement('div');
+        holesContainer.id = `holes-${id}`;
+        holesContainer.className = 'holes-container';
+
         scores.forEach((score, i) => {
           const holeDiv = document.createElement('div');
           holeDiv.className = 'hole-input';
           holeDiv.innerHTML = `
             <label>Hole ${i + 1}:</label>
-            <input type="number" id="hole-${id}-${i}" value="${score}" step="1" />
+            <input type="number" id="hole-${id}-${i}" value="${score}" step="1" inputmode="numeric" />
           `;
-          div.appendChild(holeDiv);
+          holesContainer.appendChild(holeDiv);
         });
 
         const saveBtn = document.createElement('button');
@@ -139,8 +166,9 @@
         deleteBtn.className = 'delete-btn';
         deleteBtn.onclick = () => deletePlayer(id);
 
-        div.appendChild(saveBtn);
-        div.appendChild(deleteBtn);
+        holesContainer.appendChild(saveBtn);
+        holesContainer.appendChild(deleteBtn);
+        div.appendChild(holesContainer);
         playersDiv.appendChild(div);
       }
     });
