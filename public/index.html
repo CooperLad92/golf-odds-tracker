@@ -43,6 +43,9 @@
     .toggle-btn {
       background-color: #ffc107;
     }
+    .plus-btn, .minus-btn {
+      width: 36px;
+    }
     .plus-btn {
       background-color: #28a745;
       color: white;
@@ -51,8 +54,11 @@
       background-color: #dc3545;
       color: white;
     }
+    .selected {
+      border: 2px solid black;
+    }
     .score-input {
-      width: 50px;
+      width: 60px;
       text-align: center;
     }
     .hole-row {
@@ -110,21 +116,34 @@
     }
 
     function updateScore(playerId, holeIndex, value) {
-      const modifier = scoreModifiers[playerId]?.[holeIndex] || 1;
-      const inputValue = parseInt(value);
-      const score = isNaN(inputValue) ? 0 : inputValue * modifier;
+      const mod = scoreModifiers[playerId]?.[holeIndex] || 1;
+      const parsed = parseInt(value);
+      const final = isNaN(parsed) ? 0 : parsed * mod;
 
       if (!allPlayers[playerId].scores) allPlayers[playerId].scores = Array(18).fill(0);
-      allPlayers[playerId].scores[holeIndex] = score;
+      allPlayers[playerId].scores[holeIndex] = final;
       db.ref("players/" + playerId + "/scores").set(allPlayers[playerId].scores);
-      scoreModifiers[playerId][holeIndex] = 1; // reset
+      scoreModifiers[playerId][holeIndex] = 1;
+
+      updateModifiersUI(playerId, holeIndex, null);
     }
 
     function setModifier(playerId, holeIndex, sign) {
       if (!scoreModifiers[playerId]) scoreModifiers[playerId] = {};
       scoreModifiers[playerId][holeIndex] = sign === '+' ? 1 : -1;
+
+      updateModifiersUI(playerId, holeIndex, sign);
       const input = document.getElementById(`${playerId}-hole-${holeIndex}`);
       input.focus();
+    }
+
+    function updateModifiersUI(playerId, holeIndex, active) {
+      ['+', '-'].forEach(sign => {
+        const btn = document.getElementById(`${playerId}-mod-${holeIndex}-${sign}`);
+        if (btn) {
+          btn.classList.toggle("selected", sign === active);
+        }
+      });
     }
 
     function toggleHoles(id) {
@@ -167,12 +186,13 @@
         for (let i = 0; i < 18; i++) {
           const holeRow = document.createElement("div");
           holeRow.className = "hole-row";
-          const val = typeof scores[i] === 'number' ? scores[i] : '';
+          const val = typeof scores[i] === 'number' && scores[i] !== 0 ? scores[i] : "";
+
           holeRow.innerHTML = `
             <label>Hole ${i+1}:</label>
-            <button class="plus-btn" onclick="setModifier('${id}', ${i}, '+')">+</button>
-            <button class="minus-btn" onclick="setModifier('${id}', ${i}, '-')">-</button>
-            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" value="${val !== 0 ? val : ''}" onblur="updateScore('${id}', ${i}, this.value)" />
+            <button class="plus-btn" id="${id}-mod-${i}-+" onclick="setModifier('${id}', ${i}, '+')">+</button>
+            <button class="minus-btn" id="${id}-mod-${i}--" onclick="setModifier('${id}', ${i}, '-')">-</button>
+            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" value="${val}" onfocus="selectModifier('${id}', ${i})" onblur="updateScore('${id}', ${i}, this.value)" />
           `;
           holesDiv.appendChild(holeRow);
         }
@@ -180,6 +200,13 @@
         playersDiv.appendChild(card);
       }
     });
+
+    function selectModifier(playerId, holeIndex) {
+      // Highlight the currently selected modifier if any
+      const mod = scoreModifiers[playerId]?.[holeIndex];
+      if (mod === 1) updateModifiersUI(playerId, holeIndex, '+');
+      else if (mod === -1) updateModifiersUI(playerId, holeIndex, '-');
+    }
   </script>
 </body>
 </html>
