@@ -33,10 +33,6 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    .rankings-btn {
-      background-color: #28a745;
-      color: white;
-    }
     .player-card {
       background: white;
       border-radius: 10px;
@@ -95,5 +91,133 @@
     <input id="name" placeholder="Friend's name" />
     <button onclick="addPlayer()">Add</button>
     <br />
-    <button class="rankings-btn" onclick="toggleRankings()">Show/Hide Rankings</button>
+    <button onclick="toggleRankings()">Show/Hide Rankings</button>
   </div>
+
+  <div id="rankings"></div>
+  <div id="players"></div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBnEXGUIWndeYbT7Y92BnGsmK84zMFImjA",
+      authDomain: "copa-libertadypee.firebaseapp.com",
+      databaseURL: "https://copa-libertadypee-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "copa-libertadypee",
+      storageBucket: "copa-libertadypee.appspot.com",
+      messagingSenderId: "1096956604397",
+      appId: "1:1096956604397:web:05d38d391721c0af75c1e4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let allPlayers = {};
+    let scoreModifiers = {};
+
+    function addPlayer() {
+      const name = document.getElementById("name").value;
+      if (!name) return;
+      db.ref("players").push({ name, scores: Array(18).fill(0) });
+      document.getElementById("name").value = "";
+    }
+
+    function deletePlayer(id) {
+      if (confirm("Are you sure you want to delete this player?")) {
+        db.ref("players/" + id).remove();
+      }
+    }
+
+    function updateScore(playerId, holeIndex, value) {
+      const mod = scoreModifiers[playerId]?.[holeIndex] || 1;
+      const parsed = parseInt(value);
+      const final = isNaN(parsed) ? 0 : parsed * mod;
+
+      if (!allPlayers[playerId].scores) allPlayers[playerId].scores = Array(18).fill(0);
+      allPlayers[playerId].scores[holeIndex] = final;
+      db.ref("players/" + playerId + "/scores").set(allPlayers[playerId].scores);
+      scoreModifiers[playerId][holeIndex] = 1;
+
+      updateModifiersUI(playerId, holeIndex, null);
+    }
+
+    function setModifier(playerId, holeIndex, sign) {
+      if (!scoreModifiers[playerId]) scoreModifiers[playerId] = {};
+      scoreModifiers[playerId][holeIndex] = sign === '+' ? 1 : -1;
+
+      updateModifiersUI(playerId, holeIndex, sign);
+      const input = document.getElementById(`${playerId}-hole-${holeIndex}`);
+      input.focus();
+    }
+
+    function updateModifiersUI(playerId, holeIndex, active) {
+      ['+', '-'].forEach(sign => {
+        const btn = document.getElementById(`${playerId}-mod-${holeIndex}-${sign}`);
+        if (btn) {
+          btn.classList.toggle("selected", sign === active);
+        }
+      });
+    }
+
+    function toggleHoles(id) {
+      const div = document.getElementById("holes-" + id);
+      div.style.display = div.style.display === "none" ? "block" : "none";
+    }
+
+    function toggleRankings() {
+      const div = document.getElementById("rankings");
+      if (div.style.display === "block") {
+        div.style.display = "none";
+      } else {
+        const sorted = Object.entries(allPlayers).map(([id, p]) => {
+          const total = (p.scores || []).reduce((sum, n) => sum + (parseInt(n) || 0), 0);
+          return { name: p.name, total };
+        }).sort((a, b) => a.total - b.total);
+        div.innerHTML = sorted.map(p => `<div>${p.name}: ${p.total}</div>`).join('');
+        div.style.display = "block";
+      }
+    }
+
+    const playersDiv = document.getElementById("players");
+
+    db.ref("players").on("value", snapshot => {
+      playersDiv.innerHTML = "";
+      const data = snapshot.val() || {};
+      allPlayers = data;
+      for (const id in data) {
+        const { name, scores = [] } = data[id];
+        const total = scores.reduce((sum, n) => sum + (parseInt(n) || 0), 0);
+
+        const card = document.createElement("div");
+        card.className = "player-card";
+
+        card.innerHTML = `<strong>${name} — Total: ${total}</strong>
+          <button class="delete-btn" onclick="deletePlayer('${id}')">Delete</button><br>
+          <button class="toggle-btn" onclick="toggleHoles('${id}')">Show/Hide Holes</button>
+          <div id="holes-${id}" style="display: none; margin-top: 10px;"></div>`;
+
+        const holesDiv = card.querySelector(`#holes-${id}`);
+        for (let i = 0; i < 18; i++) {
+          const holeRow = document.createElement("div");
+          holeRow.className = "hole-row";
+          const val = typeof scores[i] === 'number' && scores[i] !== 0 ? scores[i] : "";
+
+          holeRow.innerHTML = `
+            <label>Hole ${i+1}:</label>
+            <button class="plus-btn" id="${id}-mod-${i}-+" onclick="setModifier('${id}', ${i}, '+')">+</button>
+            <button class="minus-btn" id="${id}-mod-${i}--" onclick="setModifier('${id}', ${i}, '-')">-</button>
+            <input class="score-input" id="${id}-hole-${i}" type="number" placeholder="" value="${val}" onfocus="selectModifier('${id}', ${i})" onblur="updateScore('${id}', ${i}, this.value)" />
+          `;
+          holesDiv.appendChild(holeRow);
+        }
+
+        playersDiv.appendChild(card);
+      }
+    });
+
+    function selectModifier(playerId, holeIndex) {
+      const mod = scoreModifiers[playerId]?.[holeIndex];
+      if (mod === 1) updateModifiersUI(playerId, holeIndex, '+');
+      else if (mod === -1) updateModifiersUI(playerId, holeIndex, '-');
+    }
+  </script>
+</body>
+</html>
